@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mobile Teleprompter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        #cameraView {
+            flex: 1;
+            background-color: #000;
+            position: relative;
+        }
+        #scrollContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            overflow: hidden;
+            background-color: rgba(0,0,0,0.5);
+        }
+        #scrollText {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            font-size: 24px;
+            white-space: nowrap;
+        }
+        #controls {
+            padding: 10px;
+            background-color: #f0f0f0;
+        }
+        .control-group {
+            margin-bottom: 10px;
+        }
+        input, select, button {
+            margin: 5px;
+            padding: 5px;
+        }
+        #textInput {
+            width: calc(100% - 20px);
+            height: 60px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="cameraView">
+            <video id="video" autoplay playsinline></video>
+            <div id="scrollContainer">
+                <div id="scrollText"></div>
+            </div>
+        </div>
+        <div id="controls">
+            <div class="control-group">
+                <textarea id="textInput" placeholder="Enter your text here"></textarea>
+            </div>
+            <div class="control-group">
+                <input type="color" id="textColor" value="#ffffff">
+                <select id="fontSelect">
+                    <option value="Arial">Arial</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Courier">Courier</option>
+                    <option value="Georgia">Georgia</option>
+                </select>
+                <input type="number" id="textSize" min="12" max="72" value="24" placeholder="Text size">
+                <input type="number" id="scrollSpeed" min="1" max="10" value="5" placeholder="Scroll speed">
+            </div>
+            <div class="control-group">
+                <input type="range" id="opacity" min="0" max="1" step="0.1" value="0.5">
+                <label for="opacity">Opacity</label>
+            </div>
+            <div class="control-group">
+                <button id="playBtn">Play</button>
+                <button id="pauseBtn">Pause</button>
+                <button id="reverseBtn">Reverse</button>
+                <button id="mirrorBtn">Mirror Text</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const scrollContainer = document.getElementById('scrollContainer');
+        const scrollText = document.getElementById('scrollText');
+        const textInput = document.getElementById('textInput');
+        const textColor = document.getElementById('textColor');
+        const fontSelect = document.getElementById('fontSelect');
+        const textSize = document.getElementById('textSize');
+        const scrollSpeed = document.getElementById('scrollSpeed');
+        const opacity = document.getElementById('opacity');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const reverseBtn = document.getElementById('reverseBtn');
+        const mirrorBtn = document.getElementById('mirrorBtn');
+
+        let isPlaying = false;
+        let isReversed = false;
+        let isMirrored = false;
+        let animationId;
+        let position = 0;
+
+        // Camera setup
+        async function setupCamera() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            video.srcObject = stream;
+        }
+
+        function updateText() {
+            const text = textInput.value.replace(/\n/g, ' ');
+            const font = fontSelect.value;
+            const size = textSize.value + 'px';
+            const color = textColor.value;
+
+            scrollText.textContent = text;
+            scrollText.style.font = `${size} ${font}`;
+            scrollText.style.color = color;
+        }
+
+        function animate() {
+            if (isReversed) {
+                position += Number(scrollSpeed.value);
+                if (position > 0) {
+                    position = -scrollText.offsetWidth;
+                }
+            } else {
+                position -= Number(scrollSpeed.value);
+                if (position < -scrollText.offsetWidth) {
+                    position = scrollContainer.offsetWidth;
+                }
+            }
+            scrollText.style.transform = `translateX(${position}px) scaleX(${isMirrored ? -1 : 1})`;
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function play() {
+            if (!isPlaying) {
+                isPlaying = true;
+                animate();
+            }
+        }
+
+        function pause() {
+            isPlaying = false;
+            cancelAnimationFrame(animationId);
+        }
+
+        function reverse() {
+            isReversed = !isReversed;
+        }
+
+        function mirror() {
+            isMirrored = !isMirrored;
+            scrollText.style.transform = `translateX(${position}px) scaleX(${isMirrored ? -1 : 1})`;
+        }
+
+        textInput.addEventListener('input', updateText);
+        textColor.addEventListener('input', updateText);
+        fontSelect.addEventListener('change', updateText);
+        textSize.addEventListener('input', updateText);
+        opacity.addEventListener('input', () => {
+            scrollContainer.style.backgroundColor = `rgba(0,0,0,${opacity.value})`;
+        });
+        playBtn.addEventListener('click', play);
+        pauseBtn.addEventListener('click', pause);
+        reverseBtn.addEventListener('click', reverse);
+        mirrorBtn.addEventListener('click', mirror);
+
+        setupCamera();
+        updateText();
+    </script>
+</body>
+</html>
